@@ -163,3 +163,16 @@ cython_debug/
 
 
 env-ocr/
+.vscode
+
+env/
+venv/
+
+key/
+keys/
+
+run/
+wandb/
+
+
+
