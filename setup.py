@@ -5,16 +5,16 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="ocr_framework",  
+    name="box2read",  
     version="0.1.0",  
     author="Yann Terrom", 
     author_email="yannterrom@hotmail.fr",  
     description="Custom OCR framework.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yannTrm/ocr-framework",  
+    url="https://github.com/yannTrm/Box2Read",  
     project_urls={ 
-        "Bug Tracker": "https://github.com/yannTrm/ocr-framework/issues",
+        "Bug Tracker": "https://github.com/yannTrm/Box2Read/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3",
