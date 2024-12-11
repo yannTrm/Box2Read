@@ -25,7 +25,7 @@ class OdometerDataset(BaseDataset):
         transform (callable, optional): A transform to apply to the cropped images.
     """
 
-    CHARS = '0123456789.'
+    CHARS = '0123456789'
     CHAR2LABEL = {char: i + 1 for i, char in enumerate(CHARS)}      
     LABEL2CHAR = {label: char for char, label in CHAR2LABEL.items()}
 

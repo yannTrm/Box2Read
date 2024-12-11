@@ -6,64 +6,9 @@ from torch.nn import CTCLoss
 from tqdm import tqdm
 import wandb
 
-from .utils import ctc_decode, labels_to_string
-
-
-def evaluate(model, dataloader, criterion, label2char,
-             max_iter=None, decode_method='beam_search', beam_size=10):
-    model.eval()
-
-    tot_count = 0
-    tot_loss = 0
-    tot_correct = 0
-    wrong_cases = []
-
-    pbar_total = max_iter if max_iter else len(dataloader)
-    pbar = tqdm(total=pbar_total, desc="Evaluate")
-
-    with torch.no_grad():
-        for i, data in enumerate(dataloader):
-            if max_iter and i >= max_iter:
-                break
-            device = 'cuda' if next(model.parameters()).is_cuda else 'cpu'
-
-            images, targets, target_lengths = [d.to(device) for d in data]
-
-            logits = model(images)
-            log_probs = torch.nn.functional.log_softmax(logits, dim=2)
-
-            batch_size = images.size(0)
-            input_lengths = torch.LongTensor([logits.size(0)] * batch_size).to(device)
-
-            loss = criterion(log_probs, targets, input_lengths, target_lengths)
-
-            preds = ctc_decode(log_probs, method=decode_method, beam_size=beam_size)
-            reals = targets.cpu().numpy().tolist()
-            target_lengths = target_lengths.cpu().numpy().tolist()
-
-            tot_count += batch_size
-            tot_loss += loss.item()
-            target_length_counter = 0
-            for idx, (pred, target_length) in enumerate(zip(preds, target_lengths)):
-                real = reals[target_length_counter:target_length_counter + target_length]
-                target_length_counter += target_length
-                real_str = labels_to_string(real, label2char)
-                pred_str = labels_to_string(pred, label2char)
-                if pred_str == real_str:
-                    tot_correct += 1
-                else:
-                    wrong_cases.append((real_str, pred_str, images[idx].cpu().numpy()))
-
-            pbar.update(1)
-        pbar.close()
-
-    evaluation = {
-        'loss': tot_loss / tot_count,
-        'acc': tot_correct / tot_count,
-        'wrong_cases': wrong_cases
-    }
-    return evaluation
-
+from ..evaluation.evaluator import evaluate
+from ..evaluation.utils import ctc_decode, labels_to_string
+from ..evaluation.metrics import word_accuracy, character_accuracy, average_levenshtein_distance, character_confusion_matrix
 
 def train_batch(model, data, optimizer, criterion, device):
     model.train()
@@ -110,6 +55,8 @@ def train_model(model, train_loader, valid_loader, label2char, device,
         tot_train_loss = 0.0
         tot_train_count = 0
         tot_correct = 0
+        train_preds = []
+        train_reals = []
 
         for train_data in tqdm(train_loader, desc=f"Training Epoch {epoch}", leave=False):
             loss, log_probs, targets, target_lengths = train_batch(model, train_data, optimizer, criterion, device)
@@ -127,11 +74,17 @@ def train_model(model, train_loader, valid_loader, label2char, device,
                 target_length_counter += target_length
                 real_str = labels_to_string(real, label2char)
                 pred_str = labels_to_string(pred, label2char)
+                train_preds.append(pred_str)
+                train_reals.append(real_str)
                 if pred_str == real_str:
                     tot_correct += 1
 
         train_loss = tot_train_loss / tot_train_count
         train_accuracy = tot_correct / tot_train_count
+        train_word_accuracy = word_accuracy(train_preds, train_reals)
+        train_char_accuracy = character_accuracy(train_preds, train_reals)
+        train_avg_edit_distance = average_levenshtein_distance(train_preds, train_reals)
+        train_char_conf_matrix = character_confusion_matrix(train_preds, train_reals, label2char)
 
         # Validation
         model.eval()
@@ -145,7 +98,10 @@ def train_model(model, train_loader, valid_loader, label2char, device,
         )
 
         val_loss = evaluation_val['loss']
-        val_accuracy = evaluation_val['acc']
+        word_accuracy_val = evaluation_val['word_acc']
+        char_accuracy_val = evaluation_val['char_acc']
+        avg_edit_distance_val = evaluation_val['avg_edit_distance']
+        val_char_conf_matrix = evaluation_val['char_conf_matrix']
 
         # Log wrong cases to wandb
         wrong_cases = evaluation_val['wrong_cases']
@@ -158,18 +114,26 @@ def train_model(model, train_loader, valid_loader, label2char, device,
         wandb.log({
             "epoch": epoch,
             "train/train_loss": train_loss,
-            "train/train_accuracy": train_accuracy,
+            "train/word_accuracy": train_word_accuracy,
+            "train/char_accuracy": train_char_accuracy,
+            "train/average_levenshtein_distance": train_avg_edit_distance,
+            "train/char_conf_matrix": wandb.Table(data=train_char_conf_matrix.tolist(), columns=list(label2char.values())),
             "val/val_loss": val_loss,
-            "val/val_accuracy": val_accuracy
+            "val/word_accuracy": word_accuracy_val,
+            "val/char_accuracy": char_accuracy_val,
+            "val/average_levenshtein_distance": avg_edit_distance_val,
+            "val/char_conf_matrix": wandb.Table(data=val_char_conf_matrix.tolist(), columns=list(label2char.values()))
         })
 
         print(f"Epoch {epoch}: "
               f"train_loss={train_loss}, train_accuracy={train_accuracy}, "
-              f"val_loss={val_loss}, val_accuracy={val_accuracy}")
+              f"val_loss={val_loss}, val_accuracy={word_accuracy_val}, "
+              f"train_word_accuracy={train_word_accuracy}, train_char_accuracy={train_char_accuracy}, train_average_levenshtein_distance={train_avg_edit_distance}"
+              f"val_word_accuracy={word_accuracy_val}, val_char_accuracy={char_accuracy_val}, val_average_levenshtein_distance={avg_edit_distance_val}")
 
         # Update best model
-        if val_accuracy > best_val_accuracy:
-            best_val_accuracy = val_accuracy
+        if word_accuracy_val > best_val_accuracy:
+            best_val_accuracy = word_accuracy_val
             best_model_state = model.state_dict()
 
         # Save checkpoint every `checkpoint` epochs
