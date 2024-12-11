@@ -8,7 +8,6 @@ import wandb
 
 from .utils import ctc_decode, labels_to_string
 
-torch.backends.cudnn.enabled = False
 
 def evaluate(model, dataloader, criterion, label2char,
              max_iter=None, decode_method='beam_search', beam_size=10):
@@ -65,6 +64,7 @@ def evaluate(model, dataloader, criterion, label2char,
     }
     return evaluation
 
+
 def train_batch(model, data, optimizer, criterion, device):
     model.train()
     images, targets, target_lengths = [d.to(device) for d in data]
@@ -82,7 +82,7 @@ def train_batch(model, data, optimizer, criterion, device):
     loss.backward()
     torch.nn.utils.clip_grad_norm_(model.parameters(), 5)  # Gradient clipping
     optimizer.step()
-    return loss.item()
+    return loss.item(), log_probs.detach(), targets, target_lengths
 
 def train_model(model, train_loader, valid_loader, label2char, device, 
                 lr=0.001, epochs=10, decode_method='beam_search', beam_size=10,
@@ -108,26 +108,29 @@ def train_model(model, train_loader, valid_loader, label2char, device,
         model.train()
         tot_train_loss = 0.0
         tot_train_count = 0
+        tot_correct = 0
 
         for train_data in tqdm(train_loader, desc=f"Training Epoch {epoch}", leave=False):
-            loss = train_batch(model, train_data, optimizer, criterion, device)
+            loss, log_probs, targets, target_lengths = train_batch(model, train_data, optimizer, criterion, device)
             train_size = train_data[0].size(0)
             tot_train_loss += loss
             tot_train_count += train_size
 
+            preds = ctc_decode(log_probs, method=decode_method, beam_size=beam_size)
+            reals = targets.cpu().numpy().tolist()
+            target_lengths = target_lengths.cpu().numpy().tolist()
+
+            target_length_counter = 0
+            for idx, (pred, target_length) in enumerate(zip(preds, target_lengths)):
+                real = reals[target_length_counter:target_length_counter + target_length]
+                target_length_counter += target_length
+                real_str = labels_to_string(real, label2char)
+                pred_str = labels_to_string(pred, label2char)
+                if pred_str == real_str:
+                    tot_correct += 1
+
         train_loss = tot_train_loss / tot_train_count
-
-        # Evaluation on training data
-        evaluation_train = evaluate(
-            model,
-            train_loader,
-            criterion,
-            label2char,
-            decode_method=decode_method,
-            beam_size=beam_size
-        )
-
-        train_accuracy = evaluation_train['acc']
+        train_accuracy = tot_correct / tot_train_count
 
         # Validation
         model.eval()
