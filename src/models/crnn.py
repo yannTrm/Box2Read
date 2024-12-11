@@ -49,7 +49,7 @@ class CRNN(nn.Module):
         super(CRNN, self).__init__()
 
         size_configs = {
-            "n": {"cnn_channels": [img_channel, 32, 64, 128], "rnn_hidden": 128, "map_to_seq_hidden": 32},
+            "n": {"cnn_channels": [img_channel, 32, 64, 128], "rnn_hidden": 128, "map_to_seq_hidden": 64},
             "s": {"cnn_channels": [img_channel, 64, 128, 256], "rnn_hidden": 256, "map_to_seq_hidden": 64},
             "m": {"cnn_channels": [img_channel, 64, 128, 256, 256], "rnn_hidden": 256, "map_to_seq_hidden": 64},
             "l": {"cnn_channels": [img_channel, 64, 128, 256, 256, 512], "rnn_hidden": 512, "map_to_seq_hidden": 128},

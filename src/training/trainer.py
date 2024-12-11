@@ -86,7 +86,8 @@ def train_batch(model, data, optimizer, criterion, device):
 
 def train_model(model, train_loader, valid_loader, label2char, device, 
                 lr=0.001, epochs=10, decode_method='beam_search', beam_size=10,
-                criterion=None, optimizer=None, project_name="odometer-reader", run_name="milestone-reader"):
+                criterion=None, optimizer=None, project_name="odometer-reader", run_name="milestone-reader",
+                checkpoint=5):
     
     if criterion is None:
         criterion = CTCLoss(reduction='sum', zero_infinity=True).to(device)
@@ -171,6 +172,13 @@ def train_model(model, train_loader, valid_loader, label2char, device,
             best_val_accuracy = val_accuracy
             best_model_state = model.state_dict()
 
+        # Save checkpoint every `checkpoint` epochs
+        if epoch % checkpoint == 0:
+            checkpoint_path = f"./checkpoint_epoch_{epoch}.pt"
+            torch.save(model.state_dict(), checkpoint_path)
+            wandb.save(checkpoint_path)
+            os.remove(checkpoint_path)
+
     # Load best model state
     if best_model_state is not None:
         model.load_state_dict(best_model_state)
@@ -183,6 +191,7 @@ def train_model(model, train_loader, valid_loader, label2char, device,
     artifact.add_file(best_model_path)
     # Log the artifact
     wandb.log_artifact(artifact)
+    os.remove(best_model_path) 
 
     # Finish the W&B run
     wandb.finish()
