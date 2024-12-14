@@ -58,7 +58,7 @@ def train_model(model, train_loader, valid_loader, label2char, device,
         train_preds = []
         train_reals = []
 
-        for train_data in tqdm(train_loader, desc=f"Training Epoch {epoch}", leave=False):
+        for train_data in tqdm(train_loader, desc=f"Training Epoch {epoch}"): #, leave=False):
             loss, log_probs, targets, target_lengths = train_batch(model, train_data, optimizer, criterion, device)
             train_size = train_data[0].size(0)
             tot_train_loss += loss

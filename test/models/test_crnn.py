@@ -13,7 +13,7 @@ def model_size_in_mb(model: torch.nn.Module) -> float:
 # Test avec différentes tailles
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-for size in ["n", "s", "m", "l", "xl"]:
+for size in ["n", "n-bis", "s", "m", "l", "xl"]:
     model = CRNN(img_channel=1, img_height=32, img_width=200, num_class=10, model_size=size).to(device)
     dummy_input = torch.randn(2, 1, 32, 200).to(device)
     dummy_output = model(dummy_input)

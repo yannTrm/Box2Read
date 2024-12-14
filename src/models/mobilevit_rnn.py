@@ -4,7 +4,6 @@ from typing import List
 import torchvision.models as models
 
 
-
 class MobileViT_RNN(nn.Module):
     """
     MobileViT + RNN model for text recognition in images.
