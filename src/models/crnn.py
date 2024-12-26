@@ -50,11 +50,11 @@ class CRNN(nn.Module):
 
         size_configs = {
             "n": {"cnn_channels": [img_channel, 32, 64, 128], "rnn_hidden": 128, "map_to_seq_hidden": 32},
-            "n-bis": {"cnn_channels": [img_channel, 32, 64, 128], "rnn_hidden": 128, "map_to_seq_hidden": 128},
-            "s": {"cnn_channels": [img_channel, 64, 128, 256], "rnn_hidden": 256, "map_to_seq_hidden": 64},
-            "m": {"cnn_channels": [img_channel, 64, 128, 256, 256], "rnn_hidden": 256, "map_to_seq_hidden": 64},
-            "l": {"cnn_channels": [img_channel, 64, 128, 256, 256, 512], "rnn_hidden": 512, "map_to_seq_hidden": 128},
-            "xl": {"cnn_channels": [img_channel, 64, 128, 256, 256, 512, 512], "rnn_hidden": 512, "map_to_seq_hidden": 128},
+            "n-bis": {"cnn_channels": [img_channel, 32, 64, 128, 128], "rnn_hidden": 128, "map_to_seq_hidden": 32},
+            "s": {"cnn_channels": [img_channel, 64, 128, 256], "rnn_hidden": 128, "map_to_seq_hidden": 32},
+            "m": {"cnn_channels": [img_channel, 64, 128, 256, 256], "rnn_hidden": 128, "map_to_seq_hidden": 32},
+            "l": {"cnn_channels": [img_channel, 64, 128, 256, 256, 512], "rnn_hidden": 128, "map_to_seq_hidden": 32},
+            "xl": {"cnn_channels": [img_channel, 64, 128, 256, 256, 512, 512], "rnn_hidden": 128, "map_to_seq_hidden": 32},
         }
         config = size_configs[model_size]
 
@@ -142,3 +142,5 @@ class CRNN(nn.Module):
 
         output = self.dense(recurrent)
         return output  # shape: (seq_len, batch, num_class)
+    
+

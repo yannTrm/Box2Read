@@ -178,3 +178,7 @@ wandb/
 
 
 sagemaker/
+
+node_modules/
+
+images/

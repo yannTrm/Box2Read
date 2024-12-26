@@ -160,24 +160,24 @@ class MJSynthDataset(BaseDataset):
         Returns:
             Tuple: A tuple containing the image as a tensor, the target sequence, and the target length.
         """
-        sample = self.dataset[idx]
+        try:
+            sample = self.dataset[idx]
+            image = sample["image"]
+            image = image.resize((self.img_width, self.img_height), resample=Image.BILINEAR)
+        except (OSError, IOError) as e:
+            print(f"Error loading image at index {idx}: {e}")
+            return self.__getitem__((idx + 1) % len(self))  # Skip to the next image
 
-        # Charger l'image et la convertir en RGB
-
-        # Redimensionner l'image
-        image = sample["image"]
-        image = image.resize((self.img_width, self.img_height), resample=Image.BILINEAR)
-
-        # Appliquer les transformations si elles existent
+        # Apply transformations if they exist
         if self.transform:
             image = self.transform(image)
 
-        # Récupération du label textuel
+        # Retrieve the textual label
         label = sample['label']
         target = [self.char2label(c) for c in label if c in self.CHAR2LABEL]
         target_length = [len(target)]
 
-        # Conversion du label et de sa longueur en tensors
+        # Convert the label and its length to tensors
         target_tensor = torch.LongTensor(target)
         target_length_tensor = torch.LongTensor(target_length)
 
@@ -190,3 +190,6 @@ class MJSynthDataset(BaseDataset):
     def label2char(self, label: int) -> str:
         """Converts a label index back to its corresponding character."""
         return self.LABEL2CHAR[label]
+
+
+
