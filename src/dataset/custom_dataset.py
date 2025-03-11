@@ -5,6 +5,10 @@ from typing import Tuple
 from PIL import Image
 from datasets import load_dataset
 
+
+import cv2
+import numpy as np
+
 from .base_dataset import BaseDataset 
 
 
@@ -109,6 +113,54 @@ class OdometerDataset(BaseDataset):
     def char2label(self, char: str) -> int:
         """Converts a character to its corresponding label index for odometer reading."""
         return self.CHAR2LABEL[char]
+    
+
+    def display_images_with_info(self):
+        """
+        Display images with their filenames, mileage labels, and bounding boxes.
+        Press 'q' to exit the loop.
+        """
+        for idx in range(len(self.image_files)):
+            img_file = self.image_files[idx]
+            img_path = os.path.join(self.images_dir, img_file)
+            ann_path = os.path.join(self.labels_dir, img_file.replace('.jpg', '.txt'))
+            
+            image = cv2.imread(img_path)
+            if image is None:
+                print(f"Error loading image {img_file}")
+                continue
+            
+            # Read annotation
+            with open(ann_path, 'r') as f:
+                line = f.readline().strip()
+                _, x_center, y_center, width, height = map(float, line.split())
+            
+            img_height, img_width, _ = image.shape
+            x_center *= img_width
+            y_center *= img_height
+            width *= img_width
+            height *= img_height
+            x_min = int(x_center - width / 2)
+            y_min = int(y_center - height / 2)
+            x_max = int(x_center + width / 2)
+            y_max = int(y_center + height / 2)
+            
+            # Draw bounding box
+            cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+            
+            # Add text
+            mileage = self.labels[img_file]
+            cv2.putText(image, f"{img_file} - {mileage}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
+            # Display image
+            cv2.imshow('Odometer Image', image)
+            
+            # Wait for key press
+            if cv2.waitKey(0) & 0xFF == ord('q'):
+                break
+        
+        cv2.destroyAllWindows()
+
 
 
 class MJSynthDataset(BaseDataset):
